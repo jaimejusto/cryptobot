@@ -4,6 +4,8 @@ from  dotenv import load_dotenv
 import asyncio
 from coin import Coin
 import data
+import tulipy as ti
+
 
 # load environment variables
 load_dotenv()
@@ -38,15 +40,16 @@ async def main():
     # get price data
     await data.get_candle_data(exchange, watchlist, '1h')
 
-    # get ohlc candles
+    # get ohlc candles and calculate 5 EMA, 10 EMA, and 30 EMA
     for coin in watchlist.values():
         coin.candles = data.get_ohlc_candle_data(coin.raw_data)
-    
-    # calculate 5 EMA 10 EMA and 30 EMA
+        coin.five_ema = ti.ema(coin.candles['close'], period=5)
+        coin.ten_ema = ti.ema(coin.candles['close'], period=10)
+        coin.thirty_ema = ti.ema(coin.candles['close'], period=30)
 
     # determine whether to LONG, SHORT, or HOLD
     
-    # print(watchlist['ftm'].candles['close'])
+    # print(f'5 EMA: {watchlist["ftm"].five_ema[-1]}, 10 EMA: {watchlist["ftm"].ten_ema[-1]}, 30 EMA: {watchlist["ftm"].thirty_ema[-1]}')
     await exchange.close()
 
 asyncio.run(main())
