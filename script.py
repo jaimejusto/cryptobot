@@ -58,12 +58,15 @@ async def main():
             # determine whether to LONG, SHORT, or HOLD
             two_ema_advice = ts.two_ema_strategy(coin.ema_12[-1], coin.ema_26[-1])
             
+            # get bid and ask price
+            coin.marketprice = await data.get_bid_ask(exchange, coin.symbol)
+            
             if (two_ema_advice == BULLISH):
-                print(f'Entered long on {coin.symbol}')
+                print(f'Entered long on {coin.symbol} at {coin.marketprice["ask"]}')
             elif (two_ema_advice == BEARISH):
-                print(f'Entered short on {coin.symbol}')
+                print(f'Entered short on {coin.symbol} at {coin.marketprice["ask"]}')
 
-        # run every 5 minutes
+        # run every 5 minutes (300 seconds)
         print('=================')
         time.sleep(5)
 

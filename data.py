@@ -25,3 +25,9 @@ def get_ohlc_candle_data(raw_data):
         'low': low_candles.flatten(),
         'close': close_candles.flatten()
     }
+
+async def get_bid_ask(exchange, coin):
+    orderbook = await exchange.fetchOrderBook(coin)
+    bid = orderbook['bids'][0][0] if len (orderbook['bids']) > 0 else None
+    ask = orderbook['asks'][0][0] if len (orderbook['asks']) > 0 else None
+    return {'bid': bid, 'ask': ask}
