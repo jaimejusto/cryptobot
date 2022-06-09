@@ -2,11 +2,12 @@ import os
 import time
 from  dotenv import load_dotenv
 import asyncio
-import tulipy as ti
 import ccxt.async_support as ccxt
 from coin import Coin
 import data
-import trading_strategies as ts
+import trading_strategies as trade
+import trade_recorder as record
+
 
 # load environment variables
 load_dotenv()
@@ -32,7 +33,7 @@ BEARISH = -1
 # connect to kucoin futures broker
 exchange = ccxt.kucoinfutures({
     'apiKey': API_KEY,
-    'apiSecret': API_SECRET,
+    'secret': API_SECRET,
     'password': API_PASSWORD
 })
 
@@ -42,33 +43,28 @@ async def main():
     await exchange.load_markets()
 
     while True:
-            
         # get price data
         await data.get_candle_data(exchange, watchlist, '5m')
 
-        # get ohlc candles and calculate 12 EMA, and 26 EMA
         for coin in watchlist.values():
             # get ohlc candles
             coin.candles = data.get_ohlc_candle_data(coin.raw_data)
 
-            # calculate 12 EMA and 26 EMA
-            coin.ema_12 = ti.ema(coin.candles['close'], period=12)
-            coin.ema_26 = ti.ema(coin.candles['close'], period=26)
-
-            # determine whether to LONG, SHORT, or HOLD
-            two_ema_advice = ts.two_ema_strategy(coin.ema_12[-1], coin.ema_26[-1])
-            
             # get bid and ask price
             coin.marketprice = await data.get_bid_ask(exchange, coin.symbol)
             
-            if (two_ema_advice == BULLISH):
-                print(f'Entered long on {coin.symbol} at {coin.marketprice["ask"]}')
-            elif (two_ema_advice == BEARISH):
-                print(f'Entered short on {coin.symbol} at {coin.marketprice["ask"]}')
+            # trade using two ema strategy
+            coin.market_sentiment = trade.two_ema_strategy(coin)
+
+            # execute trade
+            trade_data = data.execute_papertrade(coin)
+            print(trade_data)
+
+            # document the trade
+            record.document_trade(trade_data)
 
         # run every 5 minutes (300 seconds)
-        print('=================')
-        time.sleep(5)
+        time.sleep(300)
 
     await exchange.close()
 
