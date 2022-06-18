@@ -43,9 +43,6 @@ async def main():
     # load market data
     await exchange.load_markets()
 
-    # open file to documen trade history
-    # record.create_file(FILENAME)
-
     while True:
         # get price data
         await data.get_candle_data(exchange, watchlist, '1m')
