@@ -29,6 +29,7 @@ watchlist = {
 
 BULLISH = 1
 BEARISH = -1
+FILENAME = 'trade_history.xlsx'
 
 # connect to kucoin futures broker
 exchange = ccxt.kucoinfutures({
@@ -42,9 +43,13 @@ async def main():
     # load market data
     await exchange.load_markets()
 
+    # open file to documen trade history
+    # record.create_file(FILENAME)
+
     while True:
         # get price data
-        await data.get_candle_data(exchange, watchlist, '5m')
+        await data.get_candle_data(exchange, watchlist, '1m')
+        print('TRADING...')
 
         for coin in watchlist.values():
             # get ohlc candles
@@ -58,13 +63,13 @@ async def main():
 
             # execute trade
             trade_data = data.execute_papertrade(coin)
-            print(trade_data)
 
             # document the trade
-            record.document_trade(trade_data)
+            record.document_trade(FILENAME, trade_data)
 
         # run every 5 minutes (300 seconds)
-        time.sleep(300)
+        print('--------')
+        time.sleep(120)
 
     await exchange.close()
 

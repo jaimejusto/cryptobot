@@ -35,38 +35,16 @@ async def get_bid_ask(exchange, symbol):
 async def get_open_positions(exchange):
     return await exchange.fetchPositions()
 
-
 def execute_papertrade(coin):
     trade_data = {}
 
     # close open positions that contradict the market sentiment
-    if coin.position['isOpen'] and (coin.position['side'] != coin.market_sentiment):
-        date = datetime.now()
-        coin.position['side'] = None
-        exit_price = coin.get_marketorder_price()
-        coin.position['isOpen'] = False
-        trade_data = {
-            'trade_id': coin.position['trade_id'],
-            'date_close': date, 
-            'exit': exit_price
-            }
+    if coin.open_position_contradicts_sentiment():
+        trade_data['closed_position'] = coin.close_trade()
 
     # no open position, enter position according to market sentiment
     if coin.position['isOpen'] == False:
-        date = datetime.now()
-        coin.position['side'] = coin.market_sentiment
-        entry_price = coin.get_marketorder_price()
-        coin.increase_id()
-        coin.position['isOpen'] = True
-        trade_data = {
-            'trade_id': coin.trade_id, 
-            'date_open': date, 
-            'date_close': None,
-            'symbol': coin.symbol, 
-            'side': coin.position['side'], 
-            'entry': entry_price,
-            'exit': None
-            }
+        trade_data['opened_position'] = coin.open_trade()
 
-
+    print(trade_data)
     return trade_data

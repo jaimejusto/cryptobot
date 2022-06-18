@@ -2,30 +2,66 @@ import pandas as pd
 import os.path
 
 
-COL_NAMES = ['ID', 'DATE_OPEN', 'DATE_CLOSE', 'COIN', 'SIDE', 'ENTRY', 'EXIT', 'PNL(%)']
-FILENAME = 'trade_history.xlsx'
+INDEX_LABEL = 'trade_id'
 
-def document_trade(trade_data):
+def document_trade(file, trade_data):
     # No trade occured
-    if trade_data == False: 
+    if not trade_occured(trade_data):
         return
+    
+    # Trade was opened, add to history
+    if position_was_opened(trade_data):
+        add_position(file, trade_data['opened_position'])
+    
+    # Trade was closed, update history
+    if position_was_closed(trade_data):
+        update_position(file, trade_data['closed_position'])
 
-    # Trade was closed, update columns
-    if trade_data['date_close'] != None:
-        previous_trade_data = pd.read_excel(FILENAME)
-        
-        # update date_close, exit and pnl cells
-        print(previous_trade_data)
+def trade_occured(trade_data):
+    return bool(trade_data)
 
-    # Trade was opened, append to file
+def position_was_opened(trade_data):
+    if 'opened_position' in trade_data:
+        return True
+    
+    return False
+
+def position_was_closed(trade_data):
+    if 'closed_position' in trade_data:
+        return True
+    
+    return False
+
+def add_position(file, trade_data):
+    if os.path.exists(file):
+        previous_trade_data = pd.read_excel(file)
+        new_trade_data = pd.DataFrame([trade_data])
+        updated_data = pd.concat([previous_trade_data, new_trade_data])
+        updated_data.to_excel(file, index=False)
+
     else:
-        global last_row
+        first_trade = pd.DataFrame([trade_data])
+        first_trade.to_excel(file, index=False)
+        
+def update_position(file, trade_data):
+    trade_history = pd.read_excel(file)
+    trade_history.set_index(INDEX_LABEL, inplace=True)
+    position = trade_history.loc[trade_data['trade_id']]        # position to close
+    final_data = get_finalized_data(position, trade_data)       # returns [date_close, exit, pnl]
 
-        if os.path.exists(FILENAME):
-            previous_trade_data = pd.read_excel(FILENAME)
-            new_trade_data = pd.DataFrame([trade_data])
-            updated_data = pd.concat([previous_trade_data, new_trade_data])
-            updated_data.to_excel(FILENAME, index=False)
-        else:
-            df = pd.DataFrame([trade_data])
-            df.to_excel(FILENAME, index=False)
+    # update date_close, exit and pnl cells
+    trade_history.loc[trade_data['trade_id'], ['date_close', 'exit', 'pnl']] = final_data
+    trade_history.to_excel(file)
+
+def get_finalized_data(position, trade_data):
+    # get pnl
+    pnl = calc_pnl_percentage(position['entry'], trade_data['exit'], position['side'])
+    return [trade_data['date_close'], trade_data['exit'], pnl]
+
+def calc_pnl_percentage(entry, exit, side):
+    pnl = ((exit - entry) / entry) * 100
+
+    if side == 'short':
+        pnl *= -1
+
+    return pnl
