@@ -4,8 +4,8 @@ from  dotenv import load_dotenv
 import asyncio
 import ccxt.async_support as ccxt
 from coin import Coin
-import data
-import trading_strategies as trade
+import trading_helpers.ccxt_helper as ccxt_helper
+import trading_strategies as strategies
 import trade_recorder as record
 
 
@@ -15,21 +15,10 @@ API_KEY = os.getenv('API_KEY')
 API_SECRET = os.getenv('API_SECRET')
 API_PASSWORD = os.getenv('API_PW')
 
-# coins to monitor
-watchlist = {
-    'ada': Coin('ADA/USDT:USDT'),
-    'ape': Coin('APE/USDT:USDT'),
-    'avax': Coin('AVAX/USDT:USDT'),
-    'btc': Coin('BTC/USDT:USDT'),
-    'eth': Coin('ETH/USDT:USDT'),
-    'ftm': Coin('FTM/USDT:USDT'),
-    'sol': Coin('SOL/USDT:USDT'),
-    'xrp': Coin('XRP/USDT:USDT')
-}
-
 BULLISH = 1
 BEARISH = -1
 FILENAME = 'trade_history.xlsx'
+LEVERAGE = 5
 
 # connect to kucoin futures broker
 exchange = ccxt.kucoinfutures({
@@ -38,28 +27,46 @@ exchange = ccxt.kucoinfutures({
     'password': API_PASSWORD
 })
 
+# coins to monitor
+coin_symbols = [
+    'ADA/USDT:USDT',
+    'APE/USDT:USDT',
+    'AVAX/USDT:USDT',
+    'BTC/USDT:USDT',
+    'ETH/USDT:USDT',
+    'FTM/USDT:USDT',
+    'SOL/USDT:USDT',
+    'XRP/USDT:USDT'
+]
+
 
 async def main():
     # load market data
     await exchange.load_markets()
 
+    # create watchlist of coins symbols that retrieves data for perp market
+    watchlist = ccxt_helper.verify_watchlist(exchange, coin_symbols)
+
+    # get contract data(leverage limits, contract sizes) for each coin in watchlist
+    ccxt_helper.get_coins_contract_data(exchange, watchlist)
+    
     while True:
         # get price data
-        await data.get_candle_data(exchange, watchlist, '1m')
+        await ccxt_helper.get_candle_data(exchange, watchlist, '1m')
         print('TRADING...')
 
         for coin in watchlist.values():
             # get ohlc candles
-            coin.candles = data.get_ohlc_candle_data(coin.raw_data)
+            coin.candles = ccxt_helper.get_ohlc_candle_data(coin.raw_data)
 
             # get bid and ask price
-            coin.marketprice = await data.get_bid_ask(exchange, coin.symbol)
+            coin.marketprice = await ccxt_helper.get_bid_ask(exchange, coin.symbol)
             
             # trade using two ema strategy
-            coin.market_sentiment = trade.two_ema_strategy(coin)
+            coin.market_sentiment = strategies.two_ema_strategy(coin)
 
             # execute trade
-            trade_data = data.execute_papertrade(coin)
+            trade_data = ccxt_helper.execute_papertrade(coin)
 
             # document the trade
             record.document_trade(FILENAME, trade_data)

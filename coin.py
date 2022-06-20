@@ -15,6 +15,11 @@ class Coin:
             'side': None,
             'raw_data': {}
         }
+        self.leverage_limits = {
+            'min': None,
+            'max': None
+        }
+        self.contract_size = None
 
     def get_marketorder_price(self):
         return self.marketprice['ask'] if self.market_sentiment == 'long' else self.marketprice['bid']

@@ -1,7 +1,6 @@
 import asyncio
-import pandas as pd
 import numpy as np
-from datetime import datetime
+from coin import Coin
 
 
 async def get_candle_data(exchange, watchlist: dict, timeframe: str, limit=50):
@@ -48,3 +47,39 @@ def execute_papertrade(coin):
 
     print(trade_data)
     return trade_data
+
+def get_coin_leverage_limits(exchange, coin) -> list:
+    market_data = exchange.markets[coin.symbol]
+    return [market_data['limits']['leverage']['min'], market_data['limits']['leverage']['max']]
+       
+def get_coin_contract_size(exchange, coin):
+    market_data = exchange.markets[coin.symbol]
+    return market_data['contractSize']
+
+def get_coins_contract_data(exchange, watchlist):
+    for coin in watchlist.values():
+        coin.contract_size = get_coin_contract_size(exchange, coin)
+        coin.leverage_limits['min'], coin.leverage_limits['max'] = get_coin_leverage_limits(exchange, coin)
+
+def verify_perp_market(exchange, symbol):
+    market_data = exchange.markets[symbol]
+    if market_data['type'] != 'swap':
+        return False
+    return True
+
+def verify_watchlist(exchange, watchlist: list) -> dict:
+    verified_coins = {}
+
+    for symbol in watchlist:
+        # check if symbol retrieves perpetual futures market
+        retrieves_perp_market = verify_perp_market(exchange, symbol)
+
+        if retrieves_perp_market:
+            key = symbol.split('/')[0]
+            verified_coins[key] = Coin(symbol)
+        else:
+            print(f'Market data for {symbol} is not for perp!')
+
+    return verified_coins            
+
+
