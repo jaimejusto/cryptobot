@@ -5,6 +5,7 @@ import asyncio
 import ccxt.async_support as ccxt
 from coin import Coin
 import trading_helpers.ccxt_helper as ccxt_helper
+import trading_helpers.kucoin_futures_helper as kfutures_helper
 import trading_strategies as strategies
 import trade_recorder as record
 
@@ -19,6 +20,7 @@ BULLISH = 1
 BEARISH = -1
 FILENAME = 'trade_history.xlsx'
 LEVERAGE = 5
+PAPER_TRADING_BALANCE = 100
 
 # connect to kucoin futures broker
 exchange = ccxt.kucoinfutures({
@@ -44,24 +46,17 @@ async def main():
     # load market data
     await exchange.load_markets()
 
-    # create watchlist of coins symbols that retrieves data for perp market
-    watchlist = ccxt_helper.verify_watchlist(exchange, coin_symbols)
+    # create watchlist of coins that retrieves data for perp market
+    watchlist = ccxt_helper.get_coins_contract_data(exchange, coin_symbols)
 
-    # get contract data(leverage limits, contract sizes) for each coin in watchlist
-    ccxt_helper.get_coins_contract_data(exchange, watchlist)
-    
-    while True:
+    trade_number = Coin.get_trade_id()
+
+    while trade_number != 100:
         # get price data
-        await ccxt_helper.get_candle_data(exchange, watchlist, '1m')
+        coin.candles, coin.marketprice = await ccxt_helper.get_price_data(exchange, watchlist, '1m')
         print('TRADING...')
 
-        for coin in watchlist.values():
-            # get ohlc candles
-            coin.candles = ccxt_helper.get_ohlc_candle_data(coin.raw_data)
-
-            # get bid and ask price
-            coin.marketprice = await ccxt_helper.get_bid_ask(exchange, coin.symbol)
-            
+        for coin in watchlist.values():            
             # trade using two ema strategy
             coin.market_sentiment = strategies.two_ema_strategy(coin)
 
@@ -72,7 +67,8 @@ async def main():
             record.document_trade(FILENAME, trade_data)
 
         # run every 5 minutes (300 seconds)
-        print('--------')
+        print('--watching---')
+        trade_number = Coin.get_trade_id()
         time.sleep(120)
 
     await exchange.close()

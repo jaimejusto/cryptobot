@@ -1,7 +1,7 @@
 from datetime import datetime
 class Coin:
     trade_id = 0
-    def __init__(self, symbol):
+    def __init__(self, symbol, contract_size, min_leverage, max_leverage):
         self.symbol  = symbol
         self.raw_data = []
         self.market_sentiment = None
@@ -12,14 +12,17 @@ class Coin:
         self.position = {
             'trade_id': None,
             'isOpen': False,
-            'side': None,
-            'raw_data': {}
+            'side': None
         }
         self.leverage_limits = {
-            'min': None,
-            'max': None
+            'min': min_leverage,
+            'max': max_leverage
         }
-        self.contract_size = None
+        self.contract_size = contract_size
+
+    @staticmethod
+    def get_trade_id():
+        return Coin.trade_id
 
     def get_marketorder_price(self):
         return self.marketprice['ask'] if self.market_sentiment == 'long' else self.marketprice['bid']
