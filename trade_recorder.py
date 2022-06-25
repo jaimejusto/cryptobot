@@ -55,11 +55,11 @@ def update_position(file, trade_data):
 
 def get_finalized_data(position, trade_data):
     # get pnl
-    pnl = calc_pnl_percentage(position['entry'], trade_data['exit'], position['side'])
+    pnl = calc_pnl_dollars(position['entry'], trade_data['exit'], position['side'], position['quantity'])
     return [trade_data['date_close'], trade_data['exit'], pnl]
 
-def calc_pnl_percentage(entry, exit, side):
-    pnl = ((exit - entry) / entry) * 100
+def calc_pnl_dollars(entry, exit, side, quantity):
+    pnl = (exit - entry) * quantity
 
     if side == 'short':
         pnl *= -1
