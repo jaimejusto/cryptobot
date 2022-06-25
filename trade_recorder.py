@@ -21,16 +21,10 @@ def trade_occured(trade_data):
     return bool(trade_data)
 
 def position_was_opened(trade_data):
-    if 'opened_position' in trade_data:
-        return True
-    
-    return False
+    return True if 'opened_position' in trade_data else False
 
 def position_was_closed(trade_data):
-    if 'closed_position' in trade_data:
-        return True
-    
-    return False
+    return True if 'closed_position' in trade_data else False
 
 def add_position(file, trade_data):
     if os.path.exists(file):
@@ -46,22 +40,11 @@ def add_position(file, trade_data):
 def update_position(file, trade_data):
     trade_history = pd.read_excel(file)
     trade_history.set_index(INDEX_LABEL, inplace=True)
-    position = trade_history.loc[trade_data['trade_id']]        # position to close
-    final_data = get_finalized_data(position, trade_data)       # returns [date_close, exit, pnl]
+    final_data = get_finalized_data(trade_data)                 # returns [date_close, exit, pnl]
 
     # update date_close, exit and pnl cells
     trade_history.loc[trade_data['trade_id'], ['date_close', 'exit', 'pnl']] = final_data
     trade_history.to_excel(file)
 
-def get_finalized_data(position, trade_data):
-    # get pnl
-    pnl = calc_pnl_dollars(position['entry'], trade_data['exit'], position['side'], position['quantity'])
-    return [trade_data['date_close'], trade_data['exit'], pnl]
-
-def calc_pnl_dollars(entry, exit, side, quantity):
-    pnl = (exit - entry) * quantity
-
-    if side == 'short':
-        pnl *= -1
-
-    return pnl
+def get_finalized_data(trade_data):
+    return [trade_data['date_close'], trade_data['exit'], trade_data['pnl']]
