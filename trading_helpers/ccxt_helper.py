@@ -3,9 +3,18 @@ import numpy as np
 from coin import Coin
 
 
+async def _rate_limit(ratelimit):
+    await asyncio.sleep(ratelimit / 1000 )
+
 async def _get_candle_data(exchange, symbol, timeframe: str, limit=50) -> dict:
-    await asyncio.sleep(exchange.rateLimit / 1000)      # milliseconds
-    raw_data = await exchange.fetchOHLCV(symbol, timeframe, limit=limit)
+    await _rate_limit(exchange.rateLimit)      # milliseconds
+    try:
+        raw_data = await exchange.fetchOHLCV(symbol, timeframe, limit=limit)
+    except exchange.NetworkError as e:
+        print(f'fetchOHLCV failed due to a network error: {e}')
+        # retry after waiting
+        await _rate_limit(exchange.rateLimit)      # milliseconds
+        raw_data = await exchange.fetchOHLCV(symbol, timeframe, limit=limit)
     candles = _clean_ohlc_candle_data(raw_data)
     return candles
 
@@ -27,7 +36,15 @@ def _clean_ohlc_candle_data(raw_data) -> dict:
     }
 
 async def _get_bid_ask(exchange, symbol) -> dict:
-    orderbook = await exchange.fetchOrderBook(symbol)
+    await _rate_limit(exchange.rateLimit)      # milliseconds
+
+    try:
+        orderbook = await exchange.fetchOrderBook(symbol)
+    except exchange.NetworkError as e:
+        print(f'fetchOrderBook failed due to a network error: {e}')
+        await _rate_limit(exchange.rateLimit)  
+        orderbook = await exchange.fetchOrderBook(symbol)    # milliseconds        orderbook = await exchange.fetchOrderBook(symbol)
+
     bid = orderbook['bids'][0][0] if len (orderbook['bids']) > 0 else None
     ask = orderbook['asks'][0][0] if len (orderbook['asks']) > 0 else None
     return {'bid': bid, 'ask': ask}
@@ -38,7 +55,15 @@ async def get_price_data(exchange, coin, timeframe: str) -> list:
     return [candles, marketprice]
 
 async def get_open_positions(exchange):
-    return await exchange.fetchPositions()
+    await _rate_limit(exchange.rateLimit)      # milliseconds
+    try:
+        open_positions = await exchange.fetchPositions()
+    except exchange.NetworkError as e:
+        print(f'fetchPositions failed due to a network error: {e}')
+        await _rate_limit(exchange.rateLimit)      # milliseconds
+        open_positions = await exchange.fetchPositions()
+
+    return open_positions
 
 def execute_papertrade(coin, balance, risk, leverage):
     trade_data = {}
